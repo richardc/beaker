@@ -115,10 +115,12 @@ module Beaker
         "RUN #{command}\n"
       }.join("\n")
 
-      # And define the sshd
+      # Set command to be executed and expose SSH port
+ 
+      cmd = host['docker_entrypoint'] || '/usr/sbin/sshd -D'     
       dockerfile += <<-EOF
         EXPOSE 22
-        CMD /usr/sbin/sshd -D -o "PermitRootLogin yes" -o "PasswordAuthentication yes" -o "UsePAM no"
+        CMD #{cmd}
       EOF
 
       @logger.debug("Dockerfile is #{dockerfile}")
