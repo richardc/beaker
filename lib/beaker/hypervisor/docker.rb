@@ -7,6 +7,9 @@ module Beaker
       @options = options
       @logger = options[:logger]
       @hosts = hosts
+
+      Excon.defaults[:write_timeout] = 300
+      Excon.defaults[:read_timeout]  = 300
     end
 
     def provision
