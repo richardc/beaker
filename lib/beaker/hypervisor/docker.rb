@@ -7,9 +7,7 @@ module Beaker
       @options = options
       @logger = options[:logger]
       @hosts = hosts
-
-      Excon.defaults[:write_timeout] = 300
-      Excon.defaults[:read_timeout]  = 300
+      ::Docker.options = { :write_timeout => 300, :read_timeout => 300 }
     end
 
     def provision
@@ -82,6 +80,9 @@ module Beaker
         FROM #{host['image']}
       EOF
 
+      # ssh_extra_cmd isn't used everywhere so lets default it to empty
+      ssh_extra_cmd = ''
+
       # add os-specific actions
       dockerfile += case host['platform']
       when /ubuntu/, /debian/
@@ -102,6 +103,7 @@ module Beaker
           RUN ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key
           RUN ssh-keygen -t dsa -f /etc/ssh/ssh_host_dsa_key
         EOF
+        ssh_extra_cmd = '-o "PermitRootLogin yes" -o "PasswordAuthentication yes" -o "UsePAM no"'
       else
         # TODO add more platform steps here
         raise "platform #{host['platform']} not yet supported on docker"
@@ -119,8 +121,7 @@ module Beaker
       }.join("\n")
 
       # Set command to be executed and expose SSH port
- 
-      cmd = host['docker_entrypoint'] || '/usr/sbin/sshd -D'     
+      cmd = host['docker_cmd'] || "/usr/sbin/sshd -D #{ssh_extra_cmd}"
       dockerfile += <<-EOF
         EXPOSE 22
         CMD #{cmd}
