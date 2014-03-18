@@ -317,8 +317,33 @@ named by the `base` key.
   CONFIG:
     type: foss
 
-Currently this just starts an sshd, so is only useful for 'puppet apply' style
-testing.
+When you need extra commands to be executed before launching the docker container you can add these as following.
+These commands will be ran at image creation time.
+
+  HOSTS:
+    ubuntu-12-10:
+      platform: ubuntu-12.10-x64
+      image: ubuntu:12.10
+      hypervisor: docker
+      extra_commands:
+        - 'apt-get install -y myapp'
+        - 'myapp --setup'
+  CONFIG:
+    type: foss
+
+
+By default the docker image starts sshd which can be used for 'puppet apply' style testing.
+However if you require an other command to be started you can specify that as following:
+
+  HOSTS:
+    ubuntu-12-10:
+      platform: ubuntu-12.10-x64
+      image: ubuntu:12.10
+      hypervisor: docker
+      docker_cmd: '/path/to/your/command'
+  CONFIG:
+    type: foss
+
 
 # Putting it all together #
 

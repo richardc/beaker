@@ -7,6 +7,7 @@ module Beaker
       @options = options
       @logger = options[:logger]
       @hosts = hosts
+      ::Docker.options = { :write_timeout => 300, :read_timeout => 300 }
     end
 
     def provision
@@ -79,20 +80,31 @@ module Beaker
         FROM #{host['image']}
       EOF
 
+      # ssh_extra_cmd isn't used everywhere so lets default it to empty
+      ssh_extra_cmd = ''
+
       # add os-specific actions
-      dockerfile += case host['platform']
+      case host['platform']
       when /ubuntu/, /debian/
-        <<-EOF
+        dockerfile += <<-EOF
           RUN apt-get update
-          RUN apt-get install -y openssh-server
+          RUN apt-get install -y openssh-server openssh-client
         EOF
       when /centos/, /fedora/, /redhat/
-        <<-EOF
+        dockerfile +=<<-EOF
           RUN yum clean all
-          RUN yum install -y sudo openssh-server
+          RUN yum install -y sudo openssh-server openssh-clients
           RUN ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key
           RUN ssh-keygen -t dsa -f /etc/ssh/ssh_host_dsa_key
         EOF
+      when /opensuse/, /sles/
+        dockerfile +=<<-EOF
+          RUN zypper -n in openssh
+          RUN ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key
+          RUN ssh-keygen -t dsa -f /etc/ssh/ssh_host_dsa_key
+        EOF
+        # Set extra commands for SSHD
+        ssh_extra_cmd = '-o "PermitRootLogin yes" -o "PasswordAuthentication yes" -o "UsePAM no"'
       else
         # TODO add more platform steps here
         raise "platform #{host['platform']} not yet supported on docker"
@@ -109,10 +121,11 @@ module Beaker
         "RUN #{command}\n"
       }.join("\n")
 
-      # And define the sshd
+      # Set command to be executed and expose SSH port
+      cmd = host['docker_cmd'] || "/usr/sbin/sshd -D #{ssh_extra_cmd}"
       dockerfile += <<-EOF
         EXPOSE 22
-        CMD /usr/sbin/sshd -D
+        CMD #{cmd}
       EOF
 
       @logger.debug("Dockerfile is #{dockerfile}")
