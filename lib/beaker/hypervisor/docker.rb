@@ -84,25 +84,26 @@ module Beaker
       ssh_extra_cmd = ''
 
       # add os-specific actions
-      dockerfile += case host['platform']
+      case host['platform']
       when /ubuntu/, /debian/
-        <<-EOF
+        dockerfile += <<-EOF
           RUN apt-get update
           RUN apt-get install -y openssh-server openssh-client
         EOF
       when /centos/, /fedora/, /redhat/
-        <<-EOF
+        dockerfile +=<<-EOF
           RUN yum clean all
           RUN yum install -y sudo openssh-server openssh-clients
           RUN ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key
           RUN ssh-keygen -t dsa -f /etc/ssh/ssh_host_dsa_key
         EOF
       when /opensuse/, /sles/
-        <<-EOF
+        dockerfile +=<<-EOF
           RUN zypper -n in openssh
           RUN ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key
           RUN ssh-keygen -t dsa -f /etc/ssh/ssh_host_dsa_key
         EOF
+        # Set extra commands for SSHD
         ssh_extra_cmd = '-o "PermitRootLogin yes" -o "PasswordAuthentication yes" -o "UsePAM no"'
       else
         # TODO add more platform steps here
