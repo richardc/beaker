@@ -306,8 +306,8 @@ VagrantFiles are created per host configuration file.  They can be found in the 
 
 ## Docker support ##
 
-This option allows for testing against Docker containers.  The base container is
-named by the `base` key.
+This option allows for testing against Docker containers.  The base
+image to use for the container is named by the `image` key.
 
   HOSTS:
     ubuntu-12-10:
@@ -317,8 +317,37 @@ named by the `base` key.
   CONFIG:
     type: foss
 
-Currently this just starts an sshd, so is only useful for 'puppet apply' style
-testing.
+You can specify extra commands to be executed in order to modify
+the image with the `extra_command` key.
+
+  HOSTS:
+    ubuntu-12-10:
+      platform: ubuntu-12.10-x64
+      image: ubuntu:12.10
+      hypervisor: docker
+      extra_commands:
+        - 'apt-get install -y myapp'
+        - 'myapp --setup'
+  CONFIG:
+    type: foss
+
+
+By default the docker container just runs an sshd which is adequate
+for 'puppet apply' style testing.  You can specify a different
+command to start with the `docker_cmd` key.  This gives you scope
+to run something with more service supervision baked into it, but
+it is is important that this command starts an sshd listening on
+port 22 so that beaker can drive the container.
+
+  HOSTS:
+    ubuntu-12-10:
+      platform: ubuntu-12.10-x64
+      image: ubuntu:12.10
+      hypervisor: docker
+      docker_cmd: '/sbin/init'
+  CONFIG:
+    type: foss
+
 
 # Putting it all together #
 
