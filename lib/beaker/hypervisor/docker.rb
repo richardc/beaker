@@ -21,8 +21,16 @@ module Beaker
       @hosts.each do |host|
         @logger.notify "provisioning #{host.name}"
 
-        @logger.debug("Creating image")
-        image = ::Docker::Image.build(dockerfile_for(host))
+        build_opts = {}
+
+        if host.has_key?(:cache_image)
+            build_opts[:rm] = ! host[:cache_image]
+        end
+
+
+
+        @logger.debug("Creating image with opts: #{build_opts}")
+        image = ::Docker::Image.build(dockerfile_for(host), build_opts)
         @logger.debug("Tagging image #{image.id} as #{host.name}")
         image.tag({
           :repo => host.name,
@@ -61,14 +69,26 @@ module Beaker
       @hosts.each do |host|
         if container = host['docker_container']
           @logger.debug("stop container #{container.id}")
-          container.stop
+          begin
+            container.stop
+          rescue Excon::Errors::ClientError => e
+            @logger.warn("stop of container #{container.id} failed: #{e.response.body}")
+          end
           @logger.debug("delete container #{container.id}")
-          container.delete
+          begin
+            container.delete
+          rescue Excon::Errors::ClientError => e
+            @logger.warn("deletion of container #{container.id} failed: #{e.response.body}")
+          end
         end
 
         if image = host['docker_image']
           @logger.debug("delete image #{image.id}")
-          image.delete
+          begin
+            image.delete
+          rescue Excon::Errors::ClientError => e
+            @logger.warn("deletion of image #{image.id} failed: #{e.response.body}")
+          end
         end
       end
     end
