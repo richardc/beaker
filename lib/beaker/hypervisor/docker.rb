@@ -1,5 +1,3 @@
-require 'docker'
-
 module Beaker
   class Docker < Beaker::Hypervisor
 
@@ -7,17 +5,28 @@ module Beaker
       @options = options
       @logger = options[:logger]
       @hosts = hosts
+      @usable = true
 
-      # increase the http timeouts as provisioning images can be slow
-      ::Docker.options = { :write_timeout => 300, :read_timeout => 300 }
-      # assert that the docker-api gem can talk to your docker
-      # enpoint.  Will raise if there is a version mismatch
-      ::Docker.validate_version!
-      # Pass on all the logging from docker-api to the beaker logger instance
-      ::Docker.logger = @logger
+      begin
+        require 'docker'
+
+        # Teach docker about our logger
+        ::Docker.logger = @logger
+
+        # increase the http timeouts as provisioning images can be slow
+        ::Docker.options = { :write_timeout => 300, :read_timeout => 300 }
+
+        # assert that the docker-api gem can talk to your docker
+        # endpoint.  Will raise if there is a version mismatch
+        ::Docker.validate_version!
+      rescue Exception => e
+        @usable = false
+        @logger.warn("Docker hypervisor is unusable - #{e}")
+      end
     end
 
     def provision
+      return unless @usable
       @logger.notify "Provisioning docker"
 
       @hosts.each do |host|
@@ -59,6 +68,7 @@ module Beaker
     end
 
     def cleanup
+      return unless @usable
       @logger.notify "Cleaning up docker"
       @hosts.each do |host|
         if container = host['docker_container']
