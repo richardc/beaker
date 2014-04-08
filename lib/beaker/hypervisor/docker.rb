@@ -1,5 +1,3 @@
-require 'docker'
-
 module Beaker
   class Docker < Beaker::Hypervisor
 
@@ -7,6 +5,11 @@ module Beaker
       @options = options
       @logger = options[:logger]
       @hosts = hosts
+      if RUBY_VERSION >= "1.9"
+        require 'docker'
+      else
+        raise "Docker plugins needs ruby >= 1.8"
+      end
 
       # increase the http timeouts as provisioning images can be slow
       ::Docker.options = { :write_timeout => 300, :read_timeout => 300 }
